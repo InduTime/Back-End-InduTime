@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Variáveis de ambiente e credenciais locais
+.env
+.env.*
+!.env.example
+
+# Configurações locais com credenciais
+application-local.properties
