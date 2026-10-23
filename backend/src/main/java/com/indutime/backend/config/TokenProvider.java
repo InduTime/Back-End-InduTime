@@ -27,12 +27,12 @@ public class TokenProvider {
 
     private String buildToken(String username) {
 
-        Date Now = new Date();
-        Date expirationDate = new Date(Now.getTime() + expirationTime);
+        Date now = new Date();
+        Date expirationDate = new Date(now.getTime() + expirationTime);
 
         return Jwts.builder()
                 .subject(username)
-                .issuedAt(Now)
+                .issuedAt(now)
                 .expiration(expirationDate)
                 .signWith(getSigningKey())
                 .compact();
