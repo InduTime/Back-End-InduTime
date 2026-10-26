@@ -37,6 +37,10 @@ public class CNCMachineEntity {
     @Column(name = "numero_serie", unique = true)
     private String serialNumber;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "localizacao")
     private CNCLocation location;

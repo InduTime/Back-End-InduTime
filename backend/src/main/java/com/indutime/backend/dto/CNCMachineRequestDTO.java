@@ -4,6 +4,7 @@ import com.indutime.backend.enums.CNCLocation;
 import com.indutime.backend.enums.CNCManufacturer;
 import com.indutime.backend.enums.CNCModel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +20,7 @@ import lombok.Setter;
 public class CNCMachineRequestDTO {
 
     @Schema(description = "Nome de identificação da máquina", example = "Torno CNC Haas ST-10")
+    @NotBlank(message = "O nome fantasia é obrigatório")
     private String displayName;
 
     @Schema(description = "Modelo da máquina", example = "HAAS_ST_10")
