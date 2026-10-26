@@ -27,11 +27,11 @@ public class CNCMachineEntity {
     private String displayName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "modelo")
+    @Column(name = "modelo", nullable = false)
     private CNCModel model;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "fabricante")
+    @Column(name = "fabricante", nullable = false)
     private CNCManufacturer manufacturer;
 
     @Column(name = "numero_serie", unique = true)
@@ -42,7 +42,7 @@ public class CNCMachineEntity {
     private boolean deleted = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "localizacao")
+    @Column(name = "localizacao", nullable = false)
     private CNCLocation location;
 
     @Enumerated(EnumType.STRING)
