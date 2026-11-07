@@ -6,6 +6,7 @@ import com.indutime.backend.database.repository.UsuarioRepository;
 import com.indutime.backend.dto.UsuarioRequestDTO;
 import com.indutime.backend.dto.UsuarioResponseDTO;
 import com.indutime.backend.exception.RecursoNaoEncontradoException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,15 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
-
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
-        this.usuarioRepository = usuarioRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
 
     @Transactional
     public UsuarioResponseDTO cadastrar(UsuarioRequestDTO usuarioRequestDTO) {
