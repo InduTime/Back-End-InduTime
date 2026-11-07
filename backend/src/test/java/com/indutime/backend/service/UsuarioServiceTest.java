@@ -5,7 +5,6 @@ import com.indutime.backend.database.model.Usuario;
 import com.indutime.backend.database.repository.UsuarioRepository;
 import com.indutime.backend.dto.UsuarioRequestDTO;
 import com.indutime.backend.dto.UsuarioResponseDTO;
-import com.indutime.backend.exception.ConflitoException;
 import com.indutime.backend.exception.RecursoNaoEncontradoException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,7 +57,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.existsByEmail(request.email())).thenReturn(true);
 
         assertThatThrownBy(() -> usuarioService.cadastrar(request))
-                .isInstanceOf(ConflitoException.class)
+                .isInstanceOf(IllegalStateException.class)
                 .hasMessage("E-mail já cadastrado");
     }
 

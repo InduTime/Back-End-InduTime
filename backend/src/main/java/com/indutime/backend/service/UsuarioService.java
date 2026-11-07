@@ -5,7 +5,6 @@ import com.indutime.backend.database.model.Usuario;
 import com.indutime.backend.database.repository.UsuarioRepository;
 import com.indutime.backend.dto.UsuarioRequestDTO;
 import com.indutime.backend.dto.UsuarioResponseDTO;
-import com.indutime.backend.exception.ConflitoException;
 import com.indutime.backend.exception.RecursoNaoEncontradoException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,7 +26,7 @@ public class UsuarioService {
     @Transactional
     public UsuarioResponseDTO cadastrar(UsuarioRequestDTO usuarioRequestDTO) {
         if (usuarioRepository.existsByEmail(usuarioRequestDTO.email())) {
-            throw new ConflitoException("E-mail já cadastrado");
+            throw new IllegalStateException("E-mail já cadastrado");
         }
 
         Usuario usuario = new Usuario();

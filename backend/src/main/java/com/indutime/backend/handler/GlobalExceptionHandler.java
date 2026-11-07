@@ -1,6 +1,5 @@
 package com.indutime.backend.handler;
 
-import com.indutime.backend.exception.ConflitoException;
 import com.indutime.backend.exception.RecursoNaoEncontradoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,8 +30,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    @ExceptionHandler(ConflitoException.class)
-    public ResponseEntity<ApiErrorResponse> handleConflictException(ConflitoException ex) {
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflictException(IllegalStateException ex) {
         ApiErrorResponse response = new ApiErrorResponse(
                 Instant.now(),
                 HttpStatus.CONFLICT.value(),
