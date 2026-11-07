@@ -1,4 +1,3 @@
-
 package com.indutime.backend.controller;
 
 import tools.jackson.databind.ObjectMapper;
@@ -258,4 +257,35 @@ class CNCMachineControllerTest {
 
         verify(machineService).reactivateCNCMachine(1);
     }
+
+    // DELETE MACHINE BY ID
+
+    @Test
+    @DisplayName("Deve excluir permanentemente uma máquina CNC por ID")
+    void shouldDeleteMachineByIdSuccessfully() throws Exception {
+
+        // Act & Assert
+
+        mockMvc.perform(delete("/v1/cncmachine/delete/1"))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verify(machineService).deleteCNCMachinebyId(1);
+    }
+
+    // DELETE MACHINE BY SERIAL NUMBER
+
+    @Test
+    @DisplayName("Deve excluir permanentemente uma máquina CNC pelo número de série")
+    void shouldDeleteMachineBySerialNumberSuccessfully() throws Exception {
+
+        // Act & Assert
+
+        mockMvc.perform(delete("/v1/cncmachine/delete/serial/CNC-2026-001"))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verify(machineService).deleteCNCMachineSerial("CNC-2026-001");
+    }
+
 }

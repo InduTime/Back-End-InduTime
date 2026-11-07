@@ -617,4 +617,82 @@ class CNCMachineServiceTest {
         verify(machineRepository).findById(1);
         verify(machineRepository, never()).save(any(CNCMachineEntity.class));
     }
+
+    // DELETE MACHINE BY ID
+
+    @Test
+    @DisplayName("Deve excluir permanentemente uma máquina CNC por ID")
+    void shouldDeleteMachineByIdSuccessfully() {
+
+        // Arrange
+
+        when(machineRepository.findById(1))
+                .thenReturn(Optional.of(machineEntity));
+
+        // Act
+
+        machineService.deleteCNCMachinebyId(1);
+
+        // Assert
+
+        verify(machineRepository).findById(1);
+        verify(machineRepository).delete(machineEntity);
+    }
+
+    @Test
+    @DisplayName("Deve lançar NotFoundException quando a máquina não existir durante a exclusão por ID")
+    void shouldThrowNotFoundExceptionWhenDeletingNonExistingMachineById() {
+
+        // Arrange
+
+        when(machineRepository.findById(99))
+                .thenReturn(Optional.empty());
+
+        // Act & Assert
+
+        assertThrows(NotFoundException.class, () ->
+                machineService.deleteCNCMachinebyId(99));
+
+        verify(machineRepository).findById(99);
+        verify(machineRepository, never()).delete(any(CNCMachineEntity.class));
+    }
+
+// DELETE MACHINE BY SERIAL NUMBER
+
+    @Test
+    @DisplayName("Deve excluir permanentemente uma máquina CNC pelo número de série")
+    void shouldDeleteMachineBySerialNumberSuccessfully() {
+
+        // Arrange
+
+        when(machineRepository.findBySerialNumber("CNC-2026-001"))
+                .thenReturn(Optional.of(machineEntity));
+
+        // Act
+
+        machineService.deleteCNCMachineSerial("CNC-2026-001");
+
+        // Assert
+
+        verify(machineRepository).findBySerialNumber("CNC-2026-001");
+        verify(machineRepository).delete(machineEntity);
+    }
+
+    @Test
+    @DisplayName("Deve lançar NotFoundException quando a máquina não existir durante a exclusão por número de série")
+    void shouldThrowNotFoundExceptionWhenDeletingNonExistingMachineBySerialNumber() {
+
+        // Arrange
+
+        when(machineRepository.findBySerialNumber("INVALIDO"))
+                .thenReturn(Optional.empty());
+
+        // Act & Assert
+
+        assertThrows(NotFoundException.class, () ->
+                machineService.deleteCNCMachineSerial("INVALIDO"));
+
+        verify(machineRepository).findBySerialNumber("INVALIDO");
+        verify(machineRepository, never()).delete(any(CNCMachineEntity.class));
+    }
 }

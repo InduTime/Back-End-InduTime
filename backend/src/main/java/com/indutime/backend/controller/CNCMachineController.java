@@ -21,7 +21,8 @@ import java.util.List;
 
 @Tag(
         name = "Máquinas CNC",
-        description = "Endpoints para gerenciamento de máquinas CNC do InduTime")
+        description = "Endpoints para gerenciamento de máquinas CNC do InduTime"
+)
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/cncmachine")
@@ -33,23 +34,26 @@ public class CNCMachineController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
             summary = "Cadastrar máquina CNC",
-            description = "Cadastra uma nova máquina CNC no sistema.")
+            description = "Cadastra uma nova máquina CNC no sistema."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Máquina CNC cadastrada com sucesso"),
             @ApiResponse(responseCode = "400", description = "Dados enviados inválidos"),
-            @ApiResponse(responseCode = "409", description = "Conflito ao cadastrar a máquina")})
-    public void createMachine(
-            @Valid @RequestBody CNCMachineRequestDTO requestDTO) {
+            @ApiResponse(responseCode = "409", description = "Conflito ao cadastrar a máquina")
+    })
+    public void createMachine(@Valid @RequestBody CNCMachineRequestDTO requestDTO) {
         machineService.createCNCMachine(requestDTO);
     }
 
     @GetMapping("/{id}")
     @Operation(
             summary = "Buscar máquina CNC por ID",
-            description = "Busca uma máquina CNC pelo seu identificador.")
+            description = "Busca uma máquina CNC pelo seu identificador."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Máquina encontrada com sucesso"),
-            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")})
+            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")
+    })
     public CNCMachineResponseDTO getCNCMachineById(
             @Parameter(description = "Identificador da máquina CNC", example = "1")
             @PathVariable Integer id) {
@@ -59,10 +63,9 @@ public class CNCMachineController {
     @GetMapping
     @Operation(
             summary = "Listar máquinas CNC",
-            description = "Retorna todas as máquinas CNC ativas cadastradas no sistema.")
-    @ApiResponse(
-            responseCode = "200",
-            description = "Lista de máquinas CNC retornada com sucesso")
+            description = "Retorna todas as máquinas CNC ativas cadastradas no sistema."
+    )
+    @ApiResponse(responseCode = "200", description = "Lista de máquinas CNC retornada com sucesso")
     public List<CNCMachineResponseDTO> getAllCNCMachines() {
         return machineService.getAllCNCMachine();
     }
@@ -70,10 +73,12 @@ public class CNCMachineController {
     @GetMapping("/serial/{serialNumber}")
     @Operation(
             summary = "Buscar máquina por número de série",
-            description = "Localiza uma máquina CNC pelo seu número de série.")
+            description = "Localiza uma máquina CNC pelo seu número de série."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Máquina encontrada com sucesso"),
-            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")})
+            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")
+    })
     public CNCMachineResponseDTO getCNCMachineBySerialNumber(
             @Parameter(description = "Número de série da máquina CNC", example = "CNC-001")
             @PathVariable String serialNumber) {
@@ -83,10 +88,12 @@ public class CNCMachineController {
     @GetMapping("/search")
     @Operation(
             summary = "Pesquisar máquinas CNC",
-            description = "Pesquisa máquinas CNC utilizando filtros opcionais de status, localização, modelo e fabricante.")
+            description = "Pesquisa máquinas CNC utilizando filtros opcionais de status, localização, modelo e fabricante."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Pesquisa realizada com sucesso"),
-            @ApiResponse(responseCode = "400", description = "Um ou mais parâmetros de pesquisa são inválidos")})
+            @ApiResponse(responseCode = "400", description = "Um ou mais parâmetros de pesquisa são inválidos")
+    })
     public List<CNCMachineResponseDTO> searchCNCMachines(
             @Parameter(description = "Status da máquina CNC")
             @RequestParam(required = false) CNCStatus status,
@@ -99,19 +106,19 @@ public class CNCMachineController {
 
             @Parameter(description = "Fabricante da máquina CNC")
             @RequestParam(required = false) CNCManufacturer manufacturer) {
-        return machineService.searchCNCMachines(
-                status, location, model, manufacturer
-        );
+        return machineService.searchCNCMachines(status, location, model, manufacturer);
     }
 
     @PatchMapping("/{machineId}/status")
     @Operation(
             summary = "Atualizar status da máquina CNC",
-            description = "Altera o status de uma máquina CNC identificada pelo seu ID.")
+            description = "Altera o status de uma máquina CNC identificada pelo seu ID."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Status atualizado com sucesso"),
             @ApiResponse(responseCode = "400", description = "Status informado inválido"),
-            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")})
+            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")
+    })
     public CNCMachineResponseDTO updateStatusMachine(
             @Parameter(description = "Identificador da máquina CNC", example = "1")
             @PathVariable Integer machineId,
@@ -124,12 +131,14 @@ public class CNCMachineController {
     @PutMapping("/{machineId}")
     @Operation(
             summary = "Atualizar dados da máquina CNC",
-            description = "Atualiza os dados de uma máquina CNC existente.")
+            description = "Atualiza os dados de uma máquina CNC existente."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Máquina atualizada com sucesso"),
             @ApiResponse(responseCode = "400", description = "Dados enviados inválidos"),
             @ApiResponse(responseCode = "404", description = "Máquina não encontrada"),
-            @ApiResponse(responseCode = "409", description = "Conflito ao atualizar a máquina")})
+            @ApiResponse(responseCode = "409", description = "Conflito ao atualizar a máquina")
+    })
     public CNCMachineResponseDTO updateCNCMachine(
             @Parameter(description = "Identificador da máquina CNC", example = "1")
             @PathVariable Integer machineId,
@@ -141,28 +150,100 @@ public class CNCMachineController {
     @DeleteMapping("/{machineId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
-            summary = "Desativar máquina CNC",
-            description = "Realiza a desativação lógica de uma máquina CNC.")
+            summary = "Desativar máquina CNC por ID",
+            description = "Realiza a desativação lógica de uma máquina CNC, mantendo seu registro no banco de dados."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Máquina desativada com sucesso"),
-            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")})
-    public void deleteCNCMachine(
+            @ApiResponse(responseCode = "404", description = "Máquina não encontrada"),
+            @ApiResponse(responseCode = "409", description = "Máquina já está desativada")
+    })
+    public void deactivateCNCMachineById(
             @Parameter(description = "Identificador da máquina CNC", example = "1")
             @PathVariable Integer machineId) {
         machineService.deactivateCNCMachine(machineId);
     }
 
+    @DeleteMapping("/serial/{serialNumber}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Desativar máquina CNC por número de série",
+            description = "Realiza a desativação lógica de uma máquina CNC pelo seu número de série, mantendo seu registro no banco de dados."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Máquina desativada com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Máquina não encontrada"),
+            @ApiResponse(responseCode = "409", description = "Máquina já está desativada")
+    })
+    public void deactivateCNCMachineBySerial(
+            @Parameter(description = "Número de série da máquina CNC", example = "CNC-001")
+            @PathVariable String serialNumber) {
+        machineService.deactivateCNCMachineSerial(serialNumber);
+    }
+
     @PatchMapping("/{machineId}/reactivate")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
-            summary = "Reativar máquina CNC",
-            description = "Reativa uma máquina CNC previamente desativada.")
+            summary = "Reativar máquina CNC por ID",
+            description = "Reativa uma máquina CNC previamente desativada."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Máquina reativada com sucesso"),
-            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")})
+            @ApiResponse(responseCode = "404", description = "Máquina não encontrada"),
+            @ApiResponse(responseCode = "409", description = "Máquina já está ativa")
+    })
     public void reactivateCNCMachine(
             @Parameter(description = "Identificador da máquina CNC", example = "1")
             @PathVariable Integer machineId) {
         machineService.reactivateCNCMachine(machineId);
+    }
+
+    @PatchMapping("/serial/{serialNumber}/reactivate")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Reativar máquina CNC por número de série",
+            description = "Reativa uma máquina CNC previamente desativada utilizando seu número de série."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Máquina reativada com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Máquina não encontrada"),
+            @ApiResponse(responseCode = "409", description = "Máquina já está ativa")
+    })
+    public void reactivateCNCMachineBySerial(
+            @Parameter(description = "Número de série da máquina CNC", example = "CNC-001")
+            @PathVariable String serialNumber) {
+        machineService.reactivateCNCMachineSerial(serialNumber);
+    }
+
+    @DeleteMapping("/delete/{machineId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Excluir máquina CNC por ID",
+            description = "Realiza a exclusão física e permanente de uma máquina CNC pelo seu identificador."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Máquina excluída permanentemente"),
+            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")
+    })
+    public void deleteCNCMachineById(
+            @Parameter(description = "Identificador da máquina CNC", example = "1")
+            @PathVariable Integer machineId) {
+        machineService.deleteCNCMachinebyId(machineId);
+    }
+
+    @DeleteMapping("/delete/serial/{serialNumber}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Excluir máquina CNC por número de série",
+            description = "Realiza a exclusão física e permanente de uma máquina CNC utilizando seu número de série."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Máquina excluída permanentemente"),
+            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")
+    })
+    public void deleteCNCMachineBySerial(
+            @Parameter(description = "Número de série da máquina CNC", example = "CNC-001")
+            @PathVariable String serialNumber) {
+        machineService.deleteCNCMachineSerial(serialNumber);
     }
 }

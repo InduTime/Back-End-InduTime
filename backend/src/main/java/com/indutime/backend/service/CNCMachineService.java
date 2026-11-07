@@ -156,6 +156,19 @@ public class CNCMachineService {
 
     }
 
+    public void deactivateCNCMachineSerial(String serialNumber) {
+        CNCMachineEntity machineEntity = machineRepository.findBySerialNumber(serialNumber)
+                .orElseThrow(() -> new NotFoundException("Maquina não encontrada: " +  serialNumber));
+
+        if (machineEntity.isDeleted()) {
+            throw new ConflictException("A máquina já está desativada.");
+        }
+
+        machineEntity.setDeleted(true);
+        machineRepository.save(machineEntity);
+
+    }
+
     public void deactivateCNCMachine(Integer machineId) {
         CNCMachineEntity machineEntity = machineRepository.findById(machineId)
                 .orElseThrow(() -> new NotFoundException("Maquina não encontrada: " +  machineId));
@@ -166,6 +179,38 @@ public class CNCMachineService {
 
         machineEntity.setDeleted(true);
         machineRepository.save(machineEntity);
+
+    }
+
+    public void deleteCNCMachineSerial(String serialNumber) {
+        CNCMachineEntity machineEntity = machineRepository.findBySerialNumber(serialNumber)
+                .orElseThrow(() -> new NotFoundException("Maquina não encontrada: " +  serialNumber));
+
+
+        machineRepository.delete(machineEntity);
+
+    }
+
+    public void deleteCNCMachinebyId(Integer machineId) {
+        CNCMachineEntity machineEntity = machineRepository.findById(machineId)
+                .orElseThrow(() -> new NotFoundException("Maquina não encontrada: " +  machineId));
+
+
+        machineRepository.delete(machineEntity);
+
+    }
+
+    public void reactivateCNCMachineSerial(String serialNumber) {
+        CNCMachineEntity machineEntity = machineRepository.findBySerialNumber(serialNumber)
+                .orElseThrow(() -> new NotFoundException("Maquina não encontrada: " +  serialNumber));
+
+        if (!machineEntity.isDeleted()) {
+            throw new ConflictException("A máquina já está ativa.");
+        }
+
+        machineEntity.setDeleted(false);
+        machineRepository.save(machineEntity);
+
 
     }
 
