@@ -11,13 +11,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,17 +24,13 @@ class UsuarioServiceTest {
     @Mock
     private UsuarioRepository usuarioRepository;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
     @InjectMocks
     private UsuarioService usuarioService;
 
     @Test
-    void deveCadastrarUsuarioComPerfilOperadorESenhaCriptografada() {
+    void deveCadastrarUsuarioComPerfilOperador() {
         UsuarioRequestDTO request = new UsuarioRequestDTO("João", "joao@email.com", "senha1234");
         when(usuarioRepository.existsByEmail(request.email())).thenReturn(false);
-        when(passwordEncoder.encode(request.senha())).thenReturn("senha_criptografada");
         when(usuarioRepository.save(org.mockito.ArgumentMatchers.any(Usuario.class)))
                 .thenAnswer(invocation -> {
                     Usuario usuario = invocation.getArgument(0);
@@ -45,10 +39,8 @@ class UsuarioServiceTest {
                 });
 
         UsuarioResponseDTO response = usuarioService.cadastrar(request);
-
         assertThat(response.idUsuario()).isEqualTo(10L);
         assertThat(response.tipoUsuario()).isEqualTo(TipoUsuario.OPERADOR);
-        verify(passwordEncoder).encode("senha1234");
     }
 
     @Test
