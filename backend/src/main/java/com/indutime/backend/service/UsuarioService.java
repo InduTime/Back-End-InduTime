@@ -183,6 +183,20 @@ public class UsuarioService {
         return toResponseDTO(usuario);
     }
 
+    @Transactional
+    public UsuarioResponseDTO atualizarSenhaPorEmail(
+            String email,
+            UsuarioSenhaRequestDTO usuarioSenhaRequestDTO) {
+
+        Usuario usuario = usuarioRepository.findByEmailAndDeletedFalse(email)
+                .orElseThrow(() ->
+                        new NoSuchElementException("Usuário não encontrado"));
+
+        usuario.setSenha(usuarioSenhaRequestDTO.novaSenha());
+
+        return toResponseDTO(usuario);
+    }
+
     private UsuarioResponseDTO toResponseDTO(Usuario usuario) {
 
         return new UsuarioResponseDTO(
