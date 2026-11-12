@@ -15,7 +15,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -246,4 +248,29 @@ public class CNCMachineController {
             @PathVariable String serialNumber) {
         machineService.deleteCNCMachineSerial(serialNumber);
     }
+
+    @PostMapping(
+            value = "/telemetry/csv",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(
+            summary = "Importar leituras de temperatura",
+            description = "Recebe um arquivo CSV enviado pela Raspberry Pi e atualiza as temperaturas das máquinas CNC."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Leituras importadas com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Arquivo CSV inválido"),
+            @ApiResponse(responseCode = "404", description = "Máquina não encontrada")
+    })
+    public int importTelemetryCsv(
+            @Parameter(
+                    description = "Arquivo CSV contendo as leituras dos tornos",
+                    required = true
+            )
+            @RequestParam("file") MultipartFile file) {
+
+        return machineService.importTelemetryCsv(file);
+    }
+
 }

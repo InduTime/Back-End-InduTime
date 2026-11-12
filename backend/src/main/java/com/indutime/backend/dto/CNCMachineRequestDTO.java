@@ -1,3 +1,4 @@
+
 package com.indutime.backend.dto;
 
 import com.indutime.backend.enums.CNCLocation;
@@ -11,6 +12,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -38,4 +41,7 @@ public class CNCMachineRequestDTO {
     @Schema(description = "Setor onde a máquina está localizada", example = "SETOR_USINAGEM")
     @NotNull(message = "A localização da máquina é obrigatória")
     private CNCLocation location;
+
+    @Schema(description = "Temperatura atual da máquina em graus Celsius", example = "53.42")
+    private BigDecimal temperature;
 }

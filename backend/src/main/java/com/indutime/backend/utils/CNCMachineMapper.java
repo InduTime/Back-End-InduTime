@@ -16,6 +16,7 @@ public class CNCMachineMapper {
                 .manufacturer(machineEntity.getManufacturer())
                 .serialNumber(machineEntity.getSerialNumber())
                 .location(machineEntity.getLocation())
+                .temperature(machineEntity.getTemperature())
                 .status(machineEntity.getStatus())
                 .build();
     }

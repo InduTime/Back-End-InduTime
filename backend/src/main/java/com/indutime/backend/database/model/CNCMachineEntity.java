@@ -1,3 +1,4 @@
+
 package com.indutime.backend.database.model;
 
 import com.indutime.backend.enums.CNCLocation;
@@ -7,6 +8,7 @@ import com.indutime.backend.enums.CNCStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @NoArgsConstructor
@@ -49,6 +51,9 @@ public class CNCMachineEntity {
     @Column(name = "status", nullable = false)
     @Builder.Default
     private CNCStatus status = CNCStatus.OFFLINE;
+
+    @Column(name = "temperatura", precision = 8, scale = 2)
+    private BigDecimal temperature;
 
     @OneToMany(mappedBy = "machine")
     private List<OperationEntity> operations;

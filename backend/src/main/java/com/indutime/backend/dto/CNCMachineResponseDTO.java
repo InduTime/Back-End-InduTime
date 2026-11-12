@@ -1,3 +1,4 @@
+
 package com.indutime.backend.dto;
 
 import com.indutime.backend.enums.CNCLocation;
@@ -7,6 +8,9 @@ import com.indutime.backend.enums.CNCStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
+import java.math.BigDecimal;
+
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,12 +19,21 @@ import lombok.*;
 public class CNCMachineResponseDTO {
 
     private Integer id;
+
     @NotBlank(message = "O nome fantasia é obrigatório")
     private String displayName;
+
     private CNCModel model;
+
     private CNCManufacturer manufacturer;
+
     @NotBlank(message = "O número de série é obrigatório")
     private String serialNumber;
+
     private CNCLocation location;
+
     private CNCStatus status;
+
+    private BigDecimal temperature;
+
 }
