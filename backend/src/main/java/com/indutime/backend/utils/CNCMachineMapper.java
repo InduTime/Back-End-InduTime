@@ -11,6 +11,7 @@ public class CNCMachineMapper {
     public CNCMachineResponseDTO convertToResponseDTO(CNCMachineEntity machineEntity) {
         return CNCMachineResponseDTO.builder()
                 .id(machineEntity.getId())
+                .raspberryMachineId(machineEntity.getRaspberryMachineId())
                 .displayName(machineEntity.getDisplayName())
                 .model(machineEntity.getModel())
                 .manufacturer(machineEntity.getManufacturer())
@@ -31,7 +32,4 @@ public class CNCMachineMapper {
         machineEntity.setSerialNumber(machineRequest.getSerialNumber());
         machineEntity.setLocation(machineRequest.getLocation());
     }
-
-
-
 }

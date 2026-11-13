@@ -13,8 +13,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
-
 @Getter
 @Setter
 @NoArgsConstructor
@@ -42,6 +40,5 @@ public class CNCMachineRequestDTO {
     @NotNull(message = "A localização da máquina é obrigatória")
     private CNCLocation location;
 
-    @Schema(description = "Temperatura atual da máquina em graus Celsius", example = "53.42")
-    private BigDecimal temperature;
+
 }

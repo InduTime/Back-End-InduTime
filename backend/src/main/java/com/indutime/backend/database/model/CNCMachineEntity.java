@@ -1,4 +1,3 @@
-
 package com.indutime.backend.database.model;
 
 import com.indutime.backend.enums.CNCLocation;
@@ -24,6 +23,11 @@ public class CNCMachineEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_torno")
     private Integer id;
+
+    // Identificador externo enviado pela Raspberry Pi.
+    // O ID interno continua sendo gerado pelo PostgreSQL.
+    @Column(name = "id_raspberry", unique = true)
+    private Integer raspberryMachineId;
 
     @Column(name = "nome_torno_fantasia", nullable = false)
     private String displayName;

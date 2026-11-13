@@ -1,19 +1,14 @@
 package com.indutime.backend.database.repository;
 
 import com.indutime.backend.database.model.CNCMachineEntity;
-import com.indutime.backend.dto.CNCMachineProjection;
-import com.indutime.backend.enums.CNCLocation;
-import com.indutime.backend.enums.CNCManufacturer;
-import com.indutime.backend.enums.CNCModel;
-import com.indutime.backend.enums.CNCStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.Optional;
 
-
-public interface ICNCMachineRepository extends JpaRepository<CNCMachineEntity, Integer> , JpaSpecificationExecutor<CNCMachineEntity> {
+public interface ICNCMachineRepository extends JpaRepository<CNCMachineEntity, Integer>,
+        JpaSpecificationExecutor<CNCMachineEntity> {
 
     boolean existsBySerialNumber(String serialNumber);
 
@@ -27,5 +22,7 @@ public interface ICNCMachineRepository extends JpaRepository<CNCMachineEntity, I
 
     Optional<CNCMachineEntity> findByIdAndDeletedFalse(Integer id);
 
-
+    // Busca pelo identificador externo enviado pela Raspberry.
+    // Não filtra deleted para que o Service consiga detectar máquinas desativadas.
+    Optional<CNCMachineEntity> findByRaspberryMachineId(Integer raspberryMachineId);
 }
