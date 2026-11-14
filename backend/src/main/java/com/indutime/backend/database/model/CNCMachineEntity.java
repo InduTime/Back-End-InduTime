@@ -1,3 +1,4 @@
+
 package com.indutime.backend.database.model;
 
 import com.indutime.backend.enums.CNCLocation;
@@ -8,6 +9,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @NoArgsConstructor
@@ -24,8 +26,6 @@ public class CNCMachineEntity {
     @Column(name = "id_torno")
     private Integer id;
 
-    // Identificador externo enviado pela Raspberry Pi.
-    // O ID interno continua sendo gerado pelo PostgreSQL.
     @Column(name = "id_raspberry", unique = true)
     private Integer raspberryMachineId;
 
@@ -58,6 +58,20 @@ public class CNCMachineEntity {
 
     @Column(name = "temperatura", precision = 8, scale = 2)
     private BigDecimal temperature;
+
+    @Column(name = "ultima_telemetria_em")
+    private OffsetDateTime lastTelemetryAt;
+
+    @Column(name = "em_operacao")
+    @Builder.Default
+    private Boolean running = false;
+
+    @Column(name = "operacao_iniciada_em")
+    private OffsetDateTime operationStartedAt;
+
+    @Column(name = "tempo_operacao_total_segundos")
+    @Builder.Default
+    private Long totalOperatingSeconds = 0L;
 
     @OneToMany(mappedBy = "machine")
     private List<OperationEntity> operations;

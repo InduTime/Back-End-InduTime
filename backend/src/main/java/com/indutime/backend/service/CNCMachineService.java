@@ -1,3 +1,4 @@
+
 package com.indutime.backend.service;
 
 import com.indutime.backend.database.model.CNCMachineEntity;
@@ -24,8 +25,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -34,12 +39,11 @@ public class CNCMachineService {
     private static final String CSV_HEADER =
             "id_raspberry,nome_torno,numero_serie,modelo,fabricante,localizacao,data_hora,status,temperatura";
 
+    private static final String STATUS_RUNNING = "LIGADO";
+    private static final String STATUS_STOPPED = "DESLIGADO";
+
     private final ICNCMachineRepository machineRepository;
     private final CNCMachineMapper convertToResponse;
-
-    // -------------------------------------------------------------------------
-    // Cadastro e consulta de máquinas CNC
-    // -------------------------------------------------------------------------
 
     public void createCNCMachine(CNCMachineRequestDTO machineRequestDTO) {
 
@@ -90,7 +94,8 @@ public class CNCMachineService {
         return machineResponseList;
     }
 
-    public CNCMachineResponseDTO getCNCMachineBySerialNumber(String serialNumber) {
+    public CNCMachineResponseDTO getCNCMachineBySerialNumber(
+            String serialNumber) {
 
         CNCMachineEntity machineEntity =
                 machineRepository.findBySerialNumberAndDeletedFalse(serialNumber)
@@ -143,10 +148,6 @@ public class CNCMachineService {
         return machineResponseList;
     }
 
-    // -------------------------------------------------------------------------
-    // Atualização de status e temperatura
-    // -------------------------------------------------------------------------
-
     public CNCMachineResponseDTO updateStatusMachine(
             Integer machineId,
             CNCStatus status) {
@@ -158,12 +159,12 @@ public class CNCMachineService {
         }
 
         machineEntity.setStatus(status);
+
         machineRepository.save(machineEntity);
 
         return convertToResponse.convertToResponseDTO(machineEntity);
     }
 
-    // Atualiza somente a temperatura de uma máquina já cadastrada.
     public CNCMachineResponseDTO updateMachineTemperature(
             Integer machineId,
             BigDecimal temperature) {
@@ -175,16 +176,14 @@ public class CNCMachineService {
         }
 
         CNCMachineEntity machineEntity = findActiveMachineById(machineId);
+
         machineEntity.setTemperature(temperature);
 
-        CNCMachineEntity machineUpdate = machineRepository.save(machineEntity);
+        CNCMachineEntity machineUpdate =
+                machineRepository.save(machineEntity);
 
         return convertToResponse.convertToResponseDTO(machineUpdate);
     }
-
-    // -------------------------------------------------------------------------
-    // Importação de telemetria CSV com cadastro/atualização automática
-    // -------------------------------------------------------------------------
 
     @Transactional
     public int importTelemetryCsv(MultipartFile file) {
@@ -198,6 +197,7 @@ public class CNCMachineService {
                 ))) {
 
             validateCsvHeader(reader.readLine());
+
             return processCsvRecords(reader);
 
         } catch (IOException error) {
@@ -256,39 +256,58 @@ public class CNCMachineService {
             );
         }
 
-        // A temperatura vazia representa uma linha sem leitura; ela é ignorada.
-        String temperatureValue = columns[8].trim();
-        if (temperatureValue.isEmpty()) {
-            return false;
-        }
+        Integer raspberryMachineId =
+                parseMachineId(columns[0], lineNumber);
 
-        Integer raspberryMachineId = parseMachineId(columns[0], lineNumber);
         String displayName = parseRequiredValue(
                 columns[1], "nome_torno", lineNumber
         );
+
         String serialNumber = parseRequiredValue(
                 columns[2], "numero_serie", lineNumber
         );
+
         CNCModel model = parseEnum(
                 CNCModel.class, columns[3], "modelo", lineNumber
         );
+
         CNCManufacturer manufacturer = parseEnum(
                 CNCManufacturer.class, columns[4], "fabricante", lineNumber
         );
+
         CNCLocation location = parseEnum(
                 CNCLocation.class, columns[5], "localizacao", lineNumber
         );
-        BigDecimal temperature = parseTemperature(
-                temperatureValue, lineNumber
-        );
 
-        // Localiza um registro existente ou prepara uma nova máquina.
+        OffsetDateTime telemetryDateTime =
+                parseDateTime(columns[6], lineNumber);
+
+        String operationStatus = parseRequiredValue(
+                columns[7], "status", lineNumber
+        ).toUpperCase(Locale.ROOT);
+
+        String temperatureValue = columns[8].trim();
+
+        BigDecimal temperature = null;
+
+        if (!temperatureValue.isEmpty()) {
+            temperature = parseTemperature(
+                    temperatureValue, lineNumber
+            );
+        }
+
+        if (!operationStatus.equals(STATUS_RUNNING)
+                && !operationStatus.equals(STATUS_STOPPED)) {
+            throw new BadRequestException(
+                    "Status de operação inválido na linha " + lineNumber
+            );
+        }
+
         CNCMachineEntity machineEntity = findOrCreateMachine(
                 raspberryMachineId,
                 serialNumber
         );
 
-        // Os dados cadastrais vêm da Raspberry e são sincronizados a cada envio.
         machineEntity.setRaspberryMachineId(raspberryMachineId);
         machineEntity.setDisplayName(displayName);
         machineEntity.setSerialNumber(serialNumber);
@@ -296,19 +315,84 @@ public class CNCMachineService {
         machineEntity.setManufacturer(manufacturer);
         machineEntity.setLocation(location);
 
-        // A telemetria atualiza somente a temperatura.
-        // data_hora e status são mantidos no CSV, mas ignorados pelo backend.
-        machineEntity.setTemperature(temperature);
+        machineEntity.setLastTelemetryAt(telemetryDateTime);
+
+        if (temperature != null) {
+            machineEntity.setTemperature(temperature);
+        }
+
+        processOperationStatus(
+                machineEntity,
+                operationStatus,
+                telemetryDateTime,
+                lineNumber
+        );
 
         machineRepository.save(machineEntity);
+
         return true;
     }
 
-    /**
-     * Procura primeiro pelo ID externo da Raspberry e também pelo número de série.
-     * O segundo caminho permite vincular um cadastro antigo que ainda não possui
-     * raspberryMachineId, evitando duplicar máquinas já cadastradas manualmente.
-     */
+    private void processOperationStatus(
+            CNCMachineEntity machineEntity,
+            String operationStatus,
+            OffsetDateTime eventDateTime,
+            int lineNumber) {
+
+        if (operationStatus.equals(STATUS_RUNNING)) {
+
+            if (!Boolean.TRUE.equals(machineEntity.getRunning())) {
+
+                machineEntity.setRunning(true);
+                machineEntity.setOperationStartedAt(eventDateTime);
+
+            } else if (machineEntity.getOperationStartedAt() == null) {
+
+                machineEntity.setOperationStartedAt(eventDateTime);
+            }
+
+            return;
+        }
+
+        if (operationStatus.equals(STATUS_STOPPED)) {
+
+            if (Boolean.TRUE.equals(machineEntity.getRunning())) {
+
+                OffsetDateTime operationStartedAt =
+                        machineEntity.getOperationStartedAt();
+
+                if (operationStartedAt != null) {
+
+                    if (eventDateTime.isBefore(operationStartedAt)) {
+                        throw new BadRequestException(
+                                "A data de encerramento é anterior ao início "
+                                        + "da operação na linha " + lineNumber
+                        );
+                    }
+
+                    long operatingSeconds = Duration.between(
+                            operationStartedAt,
+                            eventDateTime
+                    ).getSeconds();
+
+                    Long accumulatedSeconds =
+                            machineEntity.getTotalOperatingSeconds();
+
+                    if (accumulatedSeconds == null) {
+                        accumulatedSeconds = 0L;
+                    }
+
+                    machineEntity.setTotalOperatingSeconds(
+                            accumulatedSeconds + operatingSeconds
+                    );
+                }
+
+                machineEntity.setRunning(false);
+                machineEntity.setOperationStartedAt(null);
+            }
+        }
+    }
+
     private CNCMachineEntity findOrCreateMachine(
             Integer raspberryMachineId,
             String serialNumber) {
@@ -323,7 +407,9 @@ public class CNCMachineService {
 
         if (machineByRaspberryId != null
                 && machineBySerialNumber != null
-                && !machineByRaspberryId.getId().equals(machineBySerialNumber.getId())) {
+                && !machineByRaspberryId.getId().equals(
+                machineBySerialNumber.getId())) {
+
             throw new ConflictException(
                     "O ID da Raspberry e o número de série informados "
                             + "pertencem a máquinas diferentes."
@@ -339,6 +425,8 @@ public class CNCMachineService {
                     .raspberryMachineId(raspberryMachineId)
                     .status(CNCStatus.OFFLINE)
                     .deleted(false)
+                    .running(false)
+                    .totalOperatingSeconds(0L)
                     .build();
         }
 
@@ -349,19 +437,27 @@ public class CNCMachineService {
             );
         }
 
-        Integer currentRaspberryId = machineEntity.getRaspberryMachineId();
+        Integer currentRaspberryId =
+                machineEntity.getRaspberryMachineId();
+
         if (currentRaspberryId != null
                 && !currentRaspberryId.equals(raspberryMachineId)) {
+
             throw new ConflictException(
-                    "O número de série já está vinculado a outro ID da Raspberry."
+                    "O número de série já está vinculado "
+                            + "a outro ID da Raspberry."
             );
         }
 
-        String currentSerialNumber = machineEntity.getSerialNumber();
+        String currentSerialNumber =
+                machineEntity.getSerialNumber();
+
         if (currentSerialNumber != null
                 && !currentSerialNumber.equals(serialNumber)) {
+
             throw new ConflictException(
-                    "O ID da Raspberry já está vinculado a outro número de série."
+                    "O ID da Raspberry já está vinculado "
+                            + "a outro número de série."
             );
         }
 
@@ -371,13 +467,17 @@ public class CNCMachineService {
     private Integer parseMachineId(String value, int lineNumber) {
 
         try {
+
             int machineId = Integer.parseInt(value.trim());
+
             if (machineId <= 0) {
                 throw new NumberFormatException("ID deve ser positivo");
             }
+
             return machineId;
 
         } catch (NumberFormatException error) {
+
             throw new BadRequestException(
                     "ID da Raspberry inválido na linha " + lineNumber
             );
@@ -391,7 +491,8 @@ public class CNCMachineService {
 
         if (value == null || value.isBlank()) {
             throw new BadRequestException(
-                    "Campo " + fieldName + " obrigatório na linha " + lineNumber
+                    "Campo " + fieldName
+                            + " obrigatório na linha " + lineNumber
             );
         }
 
@@ -404,31 +505,60 @@ public class CNCMachineService {
             String fieldName,
             int lineNumber) {
 
-        String parsedValue = parseRequiredValue(value, fieldName, lineNumber);
+        String parsedValue = parseRequiredValue(
+                value,
+                fieldName,
+                lineNumber
+        );
 
         try {
             return Enum.valueOf(enumClass, parsedValue);
+
         } catch (IllegalArgumentException error) {
+
             throw new BadRequestException(
-                    "Valor inválido para " + fieldName + " na linha " + lineNumber
+                    "Valor inválido para " + fieldName
+                            + " na linha " + lineNumber
             );
         }
     }
 
-    private BigDecimal parseTemperature(String value, int lineNumber) {
+    private OffsetDateTime parseDateTime(
+            String value,
+            int lineNumber) {
+
+        try {
+            return OffsetDateTime.parse(
+                    parseRequiredValue(
+                            value,
+                            "data_hora",
+                            lineNumber
+                    )
+            );
+
+        } catch (DateTimeParseException error) {
+
+            throw new BadRequestException(
+                    "Data/hora inválida na linha " + lineNumber
+                            + ". Utilize o formato ISO-8601 com fuso horário."
+            );
+        }
+    }
+
+    private BigDecimal parseTemperature(
+            String value,
+            int lineNumber) {
 
         try {
             return new BigDecimal(value.trim());
+
         } catch (NumberFormatException error) {
+
             throw new BadRequestException(
                     "Temperatura inválida na linha " + lineNumber
             );
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Atualização cadastral
-    // -------------------------------------------------------------------------
 
     public CNCMachineResponseDTO updateCNCMachine(
             Integer machineId,
@@ -443,7 +573,8 @@ public class CNCMachineService {
 
         if (machineRequest.getSerialNumber() != null
                 && machineRepository.existsBySerialNumberAndIdNot(
-                machineRequest.getSerialNumber(), machineId)) {
+                machineRequest.getSerialNumber(),
+                machineId)) {
 
             throw new ConflictException(
                     "Número de série já existente: "
@@ -453,14 +584,11 @@ public class CNCMachineService {
 
         convertToResponse.updateEntity(machineEntity, machineRequest);
 
-        CNCMachineEntity machineUpdate = machineRepository.save(machineEntity);
+        CNCMachineEntity machineUpdate =
+                machineRepository.save(machineEntity);
 
         return convertToResponse.convertToResponseDTO(machineUpdate);
     }
-
-    // -------------------------------------------------------------------------
-    // Desativação e exclusão
-    // -------------------------------------------------------------------------
 
     public void deactivateCNCMachineSerial(String serialNumber) {
 
@@ -475,6 +603,7 @@ public class CNCMachineService {
         }
 
         machineEntity.setDeleted(true);
+
         machineRepository.save(machineEntity);
     }
 
@@ -491,6 +620,7 @@ public class CNCMachineService {
         }
 
         machineEntity.setDeleted(true);
+
         machineRepository.save(machineEntity);
     }
 
@@ -516,10 +646,6 @@ public class CNCMachineService {
         machineRepository.delete(machineEntity);
     }
 
-    // -------------------------------------------------------------------------
-    // Reativação
-    // -------------------------------------------------------------------------
-
     public void reactivateCNCMachineSerial(String serialNumber) {
 
         CNCMachineEntity machineEntity =
@@ -533,6 +659,7 @@ public class CNCMachineService {
         }
 
         machineEntity.setDeleted(false);
+
         machineRepository.save(machineEntity);
     }
 
@@ -549,12 +676,9 @@ public class CNCMachineService {
         }
 
         machineEntity.setDeleted(false);
+
         machineRepository.save(machineEntity);
     }
-
-    // -------------------------------------------------------------------------
-    // Busca auxiliar utilizada pelas operações tradicionais do CRUD
-    // -------------------------------------------------------------------------
 
     private CNCMachineEntity findActiveMachineById(Integer machineId) {
 

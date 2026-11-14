@@ -1,3 +1,4 @@
+
 package com.indutime.backend.dto;
 
 import com.indutime.backend.enums.CNCLocation;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -16,10 +18,8 @@ import java.math.BigDecimal;
 @Builder
 public class CNCMachineResponseDTO {
 
-    // ID interno gerado pelo PostgreSQL.
     private Integer id;
 
-    // ID utilizado pela Raspberry para identificar o torno.
     private Integer raspberryMachineId;
 
     @NotBlank(message = "O nome fantasia é obrigatório")
@@ -37,4 +37,14 @@ public class CNCMachineResponseDTO {
     private CNCStatus status;
 
     private BigDecimal temperature;
+
+    private OffsetDateTime lastTelemetryAt;
+
+    private Boolean running;
+
+    private OffsetDateTime operationStartedAt;
+
+    private Long totalOperatingSeconds;
+
+    private Long operatingTimeSeconds;
 }
