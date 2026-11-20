@@ -4,7 +4,7 @@ import com.indutime.backend.enums.OperationStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -30,10 +30,22 @@ public class OperationEntity {
     private CNCMachineEntity machine;
 
     @Column(name = "data_inicio", nullable = false)
-    private LocalDateTime startDate;
+    private OffsetDateTime startDate;
+
+    @Column(name = "data_inicio_offset_segundos")
+    private Integer startOffsetSeconds;
 
     @Column(name = "data_fim")
-    private LocalDateTime endDate;
+    private OffsetDateTime endDate;
+
+    @Column(name = "data_fim_offset_segundos")
+    private Integer endOffsetSeconds;
+
+    @Column(name = "data_fim_prevista")
+    private OffsetDateTime scheduledEndDate;
+
+    @Column(name = "data_fim_prevista_offset_segundos")
+    private Integer scheduledEndOffsetSeconds;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

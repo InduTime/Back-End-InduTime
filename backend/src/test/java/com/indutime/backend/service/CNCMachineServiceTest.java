@@ -25,9 +25,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.mock.web.MockMultipartFile;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -42,6 +47,9 @@ class CNCMachineServiceTest {
 
     @Mock
     private CNCMachineMapper machineMapper;
+
+    @Mock
+    private OperationService operationService;
 
     @InjectMocks
     private CNCMachineService machineService;
@@ -72,6 +80,33 @@ class CNCMachineServiceTest {
                 .location(CNCLocation.SETOR_USINAGEM)
                 .status(CNCStatus.ONLINE)
                 .build();
+    }
+
+    @Test
+    @DisplayName("Encaminha telemetria CSV ao serviço compartilhado de operações")
+    void shouldRouteCsvTelemetryThroughOperationService() {
+        OffsetDateTime measuredAt =
+                OffsetDateTime.parse("2026-11-19T08:20:00-03:00");
+        String csv = "id_raspberry,nome_torno,numero_serie,modelo,fabricante,localizacao,data_hora,status,temperatura\n"
+                + "1,Torno CNC Principal,CNC-2026-001,HAAS_ST_10,HAAS,SETOR_USINAGEM,"
+                + measuredAt + ",LIGADO,63.45\n";
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "readings.csv", "text/csv",
+                csv.getBytes(StandardCharsets.UTF_8)
+        );
+        when(machineRepository.findByRaspberryMachineId(1))
+                .thenReturn(Optional.of(machineEntity));
+        when(machineRepository.findBySerialNumber("CNC-2026-001"))
+                .thenReturn(Optional.of(machineEntity));
+
+        int processed = machineService.importTelemetryCsv(file);
+
+        assertEquals(1, processed);
+        verify(operationService).receiveCsvTelemetry(
+                eq(1), eq(1), any(CNCMachineRequestDTO.class), any(UUID.class),
+                eq(measuredAt), eq(true),
+                eq(new BigDecimal("63.45"))
+        );
     }
 
     // CREATE

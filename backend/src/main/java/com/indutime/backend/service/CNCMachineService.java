@@ -25,12 +25,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +44,7 @@ public class CNCMachineService {
 
     private final ICNCMachineRepository machineRepository;
     private final CNCMachineMapper convertToResponse;
+    private final OperationService operationService;
 
     public void createCNCMachine(CNCMachineRequestDTO machineRequestDTO) {
 
@@ -308,89 +309,44 @@ public class CNCMachineService {
                 serialNumber
         );
 
-        machineEntity.setRaspberryMachineId(raspberryMachineId);
-        machineEntity.setDisplayName(displayName);
-        machineEntity.setSerialNumber(serialNumber);
-        machineEntity.setModel(model);
-        machineEntity.setManufacturer(manufacturer);
-        machineEntity.setLocation(location);
-
-        machineEntity.setLastTelemetryAt(telemetryDateTime);
-
-        if (temperature != null) {
-            machineEntity.setTemperature(temperature);
+        if (machineEntity.getId() == null) {
+            machineEntity.setRaspberryMachineId(raspberryMachineId);
+            machineEntity.setDisplayName(displayName);
+            machineEntity.setSerialNumber(serialNumber);
+            machineEntity.setModel(model);
+            machineEntity.setManufacturer(manufacturer);
+            machineEntity.setLocation(location);
+            machineEntity = machineRepository.save(machineEntity);
         }
 
-        processOperationStatus(
-                machineEntity,
-                operationStatus,
+        CNCMachineRequestDTO machineMetadata = CNCMachineRequestDTO.builder()
+                .displayName(displayName)
+                .serialNumber(serialNumber)
+                .model(model)
+                .manufacturer(manufacturer)
+                .location(location)
+                .build();
+
+        UUID eventId = UUID.nameUUIDFromBytes((
+                raspberryMachineId + "|"
+                        + telemetryDateTime.toInstant() + "|"
+                        + operationStatus + "|"
+                        + (temperature == null
+                        ? ""
+                        : temperature.stripTrailingZeros().toPlainString())
+        ).getBytes(StandardCharsets.UTF_8));
+
+        operationService.receiveCsvTelemetry(
+                machineEntity.getId(),
+                raspberryMachineId,
+                machineMetadata,
+                eventId,
                 telemetryDateTime,
-                lineNumber
+                operationStatus.equals(STATUS_RUNNING),
+                temperature
         );
 
-        machineRepository.save(machineEntity);
-
         return true;
-    }
-
-    private void processOperationStatus(
-            CNCMachineEntity machineEntity,
-            String operationStatus,
-            OffsetDateTime eventDateTime,
-            int lineNumber) {
-
-        if (operationStatus.equals(STATUS_RUNNING)) {
-
-            if (!Boolean.TRUE.equals(machineEntity.getRunning())) {
-
-                machineEntity.setRunning(true);
-                machineEntity.setOperationStartedAt(eventDateTime);
-
-            } else if (machineEntity.getOperationStartedAt() == null) {
-
-                machineEntity.setOperationStartedAt(eventDateTime);
-            }
-
-            return;
-        }
-
-        if (operationStatus.equals(STATUS_STOPPED)) {
-
-            if (Boolean.TRUE.equals(machineEntity.getRunning())) {
-
-                OffsetDateTime operationStartedAt =
-                        machineEntity.getOperationStartedAt();
-
-                if (operationStartedAt != null) {
-
-                    if (eventDateTime.isBefore(operationStartedAt)) {
-                        throw new BadRequestException(
-                                "A data de encerramento é anterior ao início "
-                                        + "da operação na linha " + lineNumber
-                        );
-                    }
-
-                    long operatingSeconds = Duration.between(
-                            operationStartedAt,
-                            eventDateTime
-                    ).getSeconds();
-
-                    Long accumulatedSeconds =
-                            machineEntity.getTotalOperatingSeconds();
-
-                    if (accumulatedSeconds == null) {
-                        accumulatedSeconds = 0L;
-                    }
-
-                    machineEntity.setTotalOperatingSeconds(
-                            accumulatedSeconds + operatingSeconds
-                    );
-                }
-
-                machineEntity.setRunning(false);
-                machineEntity.setOperationStartedAt(null);
-            }
-        }
     }
 
     private CNCMachineEntity findOrCreateMachine(
