@@ -3,12 +3,14 @@ package com.indutime.backend.service;
 import com.indutime.backend.database.model.TipoUsuario;
 import com.indutime.backend.database.model.Usuario;
 import com.indutime.backend.database.repository.UsuarioRepository;
+import com.indutime.backend.dto.UsuarioLoginRequestDTO;
 import com.indutime.backend.dto.UsuarioRequestDTO;
 import com.indutime.backend.dto.UsuarioRecuperacaoSenhaRequestDTO;
 import com.indutime.backend.dto.UsuarioResponseDTO;
 import com.indutime.backend.dto.UsuarioSenhaRequestDTO;
 import com.indutime.backend.exception.BadRequestException;
 import com.indutime.backend.exception.NotFoundException;
+import com.indutime.backend.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,8 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class UsuarioService {
+
+    private static final String INVALID_LOGIN_MESSAGE = "E-mail ou senha incorretos";
 
     private final UsuarioRepository usuarioRepository;
 
@@ -66,6 +70,28 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findByEmailAndDeletedFalse(email)
                 .orElseThrow(() ->
                         new NoSuchElementException("Usuário não encontrado"));
+
+        return toResponseDTO(usuario);
+    }
+
+    @Transactional(readOnly = true)
+    public UsuarioResponseDTO login(UsuarioLoginRequestDTO usuarioLoginRequestDTO) {
+
+        if (usuarioLoginRequestDTO == null
+                || usuarioLoginRequestDTO.email() == null
+                || usuarioLoginRequestDTO.email().isBlank()
+                || usuarioLoginRequestDTO.senha() == null
+                || usuarioLoginRequestDTO.senha().isBlank()) {
+            throw new BadRequestException("E-mail e senha são obrigatórios");
+        }
+
+        String email = usuarioLoginRequestDTO.email().trim();
+        Usuario usuario = usuarioRepository.findByEmailAndDeletedFalse(email)
+                .orElseThrow(() -> new UnauthorizedException(INVALID_LOGIN_MESSAGE));
+
+        if (!senhaConfere(usuario, usuarioLoginRequestDTO.senha())) {
+            throw new UnauthorizedException(INVALID_LOGIN_MESSAGE);
+        }
 
         return toResponseDTO(usuario);
     }
@@ -242,5 +268,12 @@ public class UsuarioService {
                 usuario.getEmail(),
                 usuario.getTipoUsuario()
         );
+    }
+
+    private boolean senhaConfere(Usuario usuario, String senha) {
+        return usuario != null
+                && usuario.getSenha() != null
+                && senha != null
+                && usuario.getSenha().equals(senha);
     }
 }

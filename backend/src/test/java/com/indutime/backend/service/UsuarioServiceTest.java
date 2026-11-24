@@ -4,11 +4,13 @@ package com.indutime.backend.service;
 import com.indutime.backend.database.model.TipoUsuario;
 import com.indutime.backend.database.model.Usuario;
 import com.indutime.backend.database.repository.UsuarioRepository;
+import com.indutime.backend.dto.UsuarioLoginRequestDTO;
 import com.indutime.backend.dto.UsuarioRequestDTO;
 import com.indutime.backend.dto.UsuarioRecuperacaoSenhaRequestDTO;
 import com.indutime.backend.dto.UsuarioSenhaRequestDTO;
 import com.indutime.backend.exception.BadRequestException;
 import com.indutime.backend.exception.NotFoundException;
+import com.indutime.backend.exception.UnauthorizedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -138,6 +140,86 @@ class UsuarioServiceTest {
                 NoSuchElementException.class,
                 () -> usuarioService.buscarPorEmail("inexistente@email.com")
         );
+    }
+
+    @Test
+    void deveValidarLoginComCredenciaisCorretasEEmailTrimado() {
+        Usuario usuario = criarUsuario();
+        UsuarioLoginRequestDTO request = new UsuarioLoginRequestDTO(
+                "  marcos@email.com  ", "123456"
+        );
+        when(usuarioRepository.findByEmailAndDeletedFalse("marcos@email.com"))
+                .thenReturn(Optional.of(usuario));
+
+        var response = usuarioService.login(request);
+
+        assertEquals(1L, response.idUsuario());
+        assertEquals("Marcos", response.nome());
+        assertEquals("marcos@email.com", response.email());
+        assertEquals(TipoUsuario.OPERADOR, response.tipoUsuario());
+        verify(usuarioRepository).findByEmailAndDeletedFalse("marcos@email.com");
+    }
+
+    @Test
+    void senhaIncorretaRetorna401ComMensagemGenerica() {
+        Usuario usuario = criarUsuario();
+        when(usuarioRepository.findByEmailAndDeletedFalse("marcos@email.com"))
+                .thenReturn(Optional.of(usuario));
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> usuarioService.login(new UsuarioLoginRequestDTO(
+                        "marcos@email.com", "senha-incorreta"
+                ))
+        );
+
+        assertEquals("E-mail ou senha incorretos", exception.getMessage());
+    }
+
+    @Test
+    void emailInexistenteRetorna401ComAMesmaMensagem() {
+        when(usuarioRepository.findByEmailAndDeletedFalse("inexistente@email.com"))
+                .thenReturn(Optional.empty());
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> usuarioService.login(new UsuarioLoginRequestDTO(
+                        "inexistente@email.com", "senha-incorreta"
+                ))
+        );
+
+        assertEquals("E-mail ou senha incorretos", exception.getMessage());
+    }
+
+    @Test
+    void usuarioDesativadoRetorna401SemConsultarSenha() {
+        when(usuarioRepository.findByEmailAndDeletedFalse("marcos@email.com"))
+                .thenReturn(Optional.empty());
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> usuarioService.login(new UsuarioLoginRequestDTO(
+                        "marcos@email.com", "123456"
+                ))
+        );
+
+        assertEquals("E-mail ou senha incorretos", exception.getMessage());
+        verify(usuarioRepository).findByEmailAndDeletedFalse("marcos@email.com");
+    }
+
+    @Test
+    void credenciaisVaziasOuNulasNaoCausamNpeNemConsultamRepositorio() {
+        assertThrows(BadRequestException.class, () -> usuarioService.login(null));
+        assertThrows(BadRequestException.class,
+                () -> usuarioService.login(new UsuarioLoginRequestDTO(null, "123456")));
+        assertThrows(BadRequestException.class,
+                () -> usuarioService.login(new UsuarioLoginRequestDTO(" ", "123456")));
+        assertThrows(BadRequestException.class,
+                () -> usuarioService.login(new UsuarioLoginRequestDTO("marcos@email.com", null)));
+        assertThrows(BadRequestException.class,
+                () -> usuarioService.login(new UsuarioLoginRequestDTO("marcos@email.com", "   ")));
+
+        verifyNoInteractions(usuarioRepository);
     }
 
     @Test
