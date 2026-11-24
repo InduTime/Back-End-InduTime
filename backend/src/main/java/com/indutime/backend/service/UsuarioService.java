@@ -4,14 +4,18 @@ import com.indutime.backend.database.model.TipoUsuario;
 import com.indutime.backend.database.model.Usuario;
 import com.indutime.backend.database.repository.UsuarioRepository;
 import com.indutime.backend.dto.UsuarioRequestDTO;
+import com.indutime.backend.dto.UsuarioRecuperacaoSenhaRequestDTO;
 import com.indutime.backend.dto.UsuarioResponseDTO;
 import com.indutime.backend.dto.UsuarioSenhaRequestDTO;
+import com.indutime.backend.exception.BadRequestException;
+import com.indutime.backend.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -92,9 +96,20 @@ public class UsuarioService {
             Long idUsuario,
             UsuarioSenhaRequestDTO usuarioSenhaRequestDTO) {
 
+        validarSenhaAtual(usuarioSenhaRequestDTO == null
+                ? null
+                : usuarioSenhaRequestDTO.senhaAtual());
+        validarNovaSenha(usuarioSenhaRequestDTO == null
+                ? null
+                : usuarioSenhaRequestDTO.novaSenha());
+
         Usuario usuario = usuarioRepository.findByIdUsuarioAndDeletedFalse(idUsuario)
                 .orElseThrow(() ->
-                        new NoSuchElementException("Usuário não encontrado"));
+                        new NotFoundException("Usuário não encontrado"));
+
+        if (!Objects.equals(usuario.getSenha(), usuarioSenhaRequestDTO.senhaAtual())) {
+            throw new BadRequestException("A senha atual informada é inválida");
+        }
 
         usuario.setSenha(usuarioSenhaRequestDTO.novaSenha());
 
@@ -186,15 +201,37 @@ public class UsuarioService {
     @Transactional
     public UsuarioResponseDTO atualizarSenhaPorEmail(
             String email,
-            UsuarioSenhaRequestDTO usuarioSenhaRequestDTO) {
+            UsuarioRecuperacaoSenhaRequestDTO usuarioSenhaRequestDTO) {
+
+        validarNovaSenha(usuarioSenhaRequestDTO == null
+                ? null
+                : usuarioSenhaRequestDTO.novaSenha());
 
         Usuario usuario = usuarioRepository.findByEmailAndDeletedFalse(email)
                 .orElseThrow(() ->
-                        new NoSuchElementException("Usuário não encontrado"));
+                        new NotFoundException("Usuário não encontrado"));
 
         usuario.setSenha(usuarioSenhaRequestDTO.novaSenha());
 
         return toResponseDTO(usuario);
+    }
+
+    private void validarSenhaAtual(String senhaAtual) {
+        if (senhaAtual == null || senhaAtual.isBlank()) {
+            throw new BadRequestException("A senha atual é obrigatória");
+        }
+    }
+
+    private void validarNovaSenha(String novaSenha) {
+        if (novaSenha == null || novaSenha.isBlank()) {
+            throw new BadRequestException("A nova senha é obrigatória");
+        }
+
+        if (novaSenha.length() < 8) {
+            throw new BadRequestException(
+                    "A nova senha deve ter no mínimo 8 caracteres"
+            );
+        }
     }
 
     private UsuarioResponseDTO toResponseDTO(Usuario usuario) {

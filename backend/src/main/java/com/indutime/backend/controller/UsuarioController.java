@@ -2,6 +2,7 @@ package com.indutime.backend.controller;
 
 import com.indutime.backend.database.model.TipoUsuario;
 import com.indutime.backend.dto.UsuarioRequestDTO;
+import com.indutime.backend.dto.UsuarioRecuperacaoSenhaRequestDTO;
 import com.indutime.backend.dto.UsuarioResponseDTO;
 import com.indutime.backend.dto.UsuarioSenhaRequestDTO;
 import com.indutime.backend.service.UsuarioService;
@@ -107,7 +108,7 @@ public class UsuarioController {
     @PatchMapping("/email/{email}/senha")
     public UsuarioResponseDTO atualizarSenhaPorEmail(
             @PathVariable String email,
-            @Valid @RequestBody UsuarioSenhaRequestDTO usuarioSenhaRequestDTO) {
+            @Valid @RequestBody UsuarioRecuperacaoSenhaRequestDTO usuarioSenhaRequestDTO) {
         return usuarioService.atualizarSenhaPorEmail(email, usuarioSenhaRequestDTO);
     }
 

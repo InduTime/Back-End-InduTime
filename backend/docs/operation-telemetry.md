@@ -115,7 +115,7 @@ payload = {
 }
 
 response = requests.post(
-    "http://localhost:8081/v1/operations/telemetry",
+    "http://127.0.0.1:8083/v1/operations/telemetry",
     json=payload,
     timeout=15,
 )
@@ -129,4 +129,4 @@ Persistir o payload (incluindo `eventId`) antes da requisição e reutilizá-lo 
 
 O projeto não possui uma ferramenta de migração de banco configurada. Antes de implantar a alteração em um banco existente, revise e execute [`20261119_operation_timestamps.sql`](./migrations/20261119_operation_timestamps.sql) uma vez. A migração interpreta timestamps antigos sem fuso como horário local de `America/Sao_Paulo`; confirme que essa era a zona usada ao gravar esses dados. Ela também cria um índice único parcial que impede mais de uma operação aberta por máquina.
 
-O endpoint CSV atual permanece em `POST /v1/cncmachine/telemetry/csv`. As transições CSV agora passam pelo mesmo serviço de operações do endpoint JSON. O formato CSV não possui offset no simulador atual, embora o parser Java já exija um offset ISO-8601; ajuste de relógio/offset nesse cliente é uma pendência independente e o arquivo do simulador não foi alterado.
+O endpoint CSV atual permanece em `POST /v1/cncmachine/telemetry/csv`. As transições CSV passam pelo mesmo serviço de operações do endpoint JSON. O campo `data_hora` deve usar ISO-8601 com offset, como `2026-11-19T08:20:00-03:00`; o simulador Python gera esse formato e envia o arquivo pelo campo multipart `file`. Por padrão, ele aponta para `http://127.0.0.1:8083`; configure `INDUTIME_BACKEND_URL` para outro host.

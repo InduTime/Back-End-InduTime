@@ -8,7 +8,7 @@ O projeto utiliza Java e Spring Boot, com PostgreSQL para persistência dos dado
 
 A INDUTIME tem como objetivo centralizar informações relacionadas aos tornos CNC, às operações realizadas e aos períodos de pausa, permitindo acompanhar o histórico operacional e consultar indicadores relevantes.
 
-O sistema também prevê integração com uma Raspberry Pi responsável pela coleta e pelo envio de dados relacionados às máquinas. Os detalhes do contrato de comunicação serão definidos conforme a integração técnica disponível.
+O sistema integra com um simulador Python da Raspberry Pi para coletar e enviar telemetria das máquinas por CSV. O contrato efetivo está implementado em `POST /v1/cncmachine/telemetry/csv`.
 
 ## Objetivos
 
@@ -225,6 +225,26 @@ Linux ou macOS:
 ```
 
 A inicialização depende de o PostgreSQL estar acessível, de as credenciais serem válidas e de o schema ser compatível com as entidades. Se o banco não estiver disponível ou a validação falhar, confira a mensagem de erro no console.
+
+## Simulador Raspberry Pi
+
+O [simulador](./simuladorRasp.py) envia telemetria ao endpoint CSV do backend usando `multipart/form-data`, com o arquivo no campo `file`. O endereço padrão é `http://127.0.0.1:8083`, conforme `backend/src/main/resources/application.properties`.
+
+Instale a dependência e execute na raiz do repositório:
+
+```powershell
+python -m pip install requests
+python simuladorRasp.py
+```
+
+Para apontar para outro computador ou servidor, configure `INDUTIME_BACKEND_URL` antes de iniciar o simulador. Exemplo no PowerShell:
+
+```powershell
+$env:INDUTIME_BACKEND_URL="http://192.168.1.20:8083"
+python simuladorRasp.py
+```
+
+Os IDs configurados em `MACHINES` são identificadores externos da Raspberry e precisam permanecer vinculados às mesmas máquinas e números de série no backend. Modelo, fabricante e localização devem usar os nomes dos enums Java. O simulador gera registros a cada 20 segundos, alterna aleatoriamente os estados com probabilidade de 5% por máquina em cada ciclo e só gera temperatura enquanto a máquina está ligada. Mantém `tornos.csv` como histórico local e guarda falhas de envio em `leituras_pendentes.json` para novas tentativas. O horário enviado inclui o offset local. Ao encerrar o processo, `DESLIGADO` é registrado apenas no histórico local, pois encerrar o simulador não significa que a máquina CNC parou.
 
 ## Docker
 

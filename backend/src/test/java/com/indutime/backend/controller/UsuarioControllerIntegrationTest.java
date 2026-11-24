@@ -14,6 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,6 +33,119 @@ class UsuarioControllerIntegrationTest {
     @BeforeEach
     void setUp() {
         usuarioRepository.deleteAll();
+    }
+
+    private Usuario salvarUsuario() {
+        Usuario usuario = new Usuario();
+        usuario.setNome("Maria");
+        usuario.setEmail("maria@email.com");
+        usuario.setSenha("SenhaAtual123");
+        usuario.setTipoUsuario(TipoUsuario.OPERADOR);
+        return usuarioRepository.save(usuario);
+    }
+
+    @Test
+    void deveRecuperarSenhaPorEmailSemExigirSenhaAtualEManterOsDemaisDados() throws Exception {
+        Usuario salvo = salvarUsuario();
+
+        mockMvc.perform(patch("/usuarios/email/{email}/senha", salvo.getEmail())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"novaSenha":"NovaSenha123"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Maria"))
+                .andExpect(jsonPath("$.email").value("maria@email.com"))
+                .andExpect(jsonPath("$.tipoUsuario").value("OPERADOR"))
+                .andExpect(jsonPath("$.senha").doesNotExist());
+
+        Usuario atualizado = usuarioRepository.findById(salvo.getIdUsuario()).orElseThrow();
+        assertThat(atualizado.getSenha()).isEqualTo("NovaSenha123");
+        assertThat(atualizado.getNome()).isEqualTo("Maria");
+        assertThat(atualizado.getEmail()).isEqualTo("maria@email.com");
+        assertThat(atualizado.getTipoUsuario()).isEqualTo(TipoUsuario.OPERADOR);
+        assertThat(atualizado.isDeleted()).isFalse();
+    }
+
+    @Test
+    void deveAtualizarSenhaPorIdValidandoSenhaAtual() throws Exception {
+        Usuario salvo = salvarUsuario();
+
+        mockMvc.perform(patch("/usuarios/{idUsuario}/senha", salvo.getIdUsuario())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "senhaAtual": "SenhaAtual123",
+                                  "novaSenha": "NovaSenha123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.senha").doesNotExist());
+
+        Usuario atualizado = usuarioRepository.findById(salvo.getIdUsuario()).orElseThrow();
+        assertThat(atualizado.getSenha()).isEqualTo("NovaSenha123");
+        assertThat(atualizado.getNome()).isEqualTo("Maria");
+        assertThat(atualizado.getEmail()).isEqualTo("maria@email.com");
+        assertThat(atualizado.isDeleted()).isFalse();
+    }
+
+    @Test
+    void deveRetornarBadRequestEManterSenhaQuandoNovaSenhaInvalida() throws Exception {
+        Usuario salvo = salvarUsuario();
+        String[] payloads = {
+                "{}",
+                "{\"novaSenha\":null}",
+                "{\"novaSenha\":\"\"}",
+                "{\"novaSenha\":\"        \"}",
+                "{\"novaSenha\":\"1234567\"}"
+        };
+
+        for (String payload : payloads) {
+            mockMvc.perform(patch("/usuarios/email/{email}/senha", salvo.getEmail())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(payload))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.senha").doesNotExist());
+        }
+
+        Usuario inalterado = usuarioRepository.findById(salvo.getIdUsuario()).orElseThrow();
+        assertThat(inalterado.getSenha()).isEqualTo("SenhaAtual123");
+    }
+
+    @Test
+    void deveRetornarBadRequestQuandoSenhaAtualEstiverAusenteOuIncorreta() throws Exception {
+        Usuario salvo = salvarUsuario();
+
+        mockMvc.perform(patch("/usuarios/{idUsuario}/senha", salvo.getIdUsuario())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"novaSenha\":\"NovaSenha123\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        mockMvc.perform(patch("/usuarios/{idUsuario}/senha", salvo.getIdUsuario())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "senhaAtual": "senha-incorreta",
+                                  "novaSenha": "NovaSenha123"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        Usuario inalterado = usuarioRepository.findById(salvo.getIdUsuario()).orElseThrow();
+        assertThat(inalterado.getSenha()).isEqualTo("SenhaAtual123");
+    }
+
+    @Test
+    void deveRetornarNaoEncontradoAoRecuperarSenhaDeUsuarioInexistente() throws Exception {
+        mockMvc.perform(patch("/usuarios/email/{email}/senha", "inexistente@email.com")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"novaSenha\":\"NovaSenha123\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
     }
 
     @Test
@@ -97,9 +211,8 @@ class UsuarioControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.nome").exists())
-                .andExpect(jsonPath("$.fieldErrors.email").exists())
-                .andExpect(jsonPath("$.fieldErrors.senha").exists());
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test

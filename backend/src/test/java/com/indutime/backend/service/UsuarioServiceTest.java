@@ -5,7 +5,10 @@ import com.indutime.backend.database.model.TipoUsuario;
 import com.indutime.backend.database.model.Usuario;
 import com.indutime.backend.database.repository.UsuarioRepository;
 import com.indutime.backend.dto.UsuarioRequestDTO;
+import com.indutime.backend.dto.UsuarioRecuperacaoSenhaRequestDTO;
 import com.indutime.backend.dto.UsuarioSenhaRequestDTO;
+import com.indutime.backend.exception.BadRequestException;
+import com.indutime.backend.exception.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -180,9 +183,9 @@ class UsuarioServiceTest {
     @Test
     void deveAtualizarSenhaDoUsuario() {
         Usuario usuario = criarUsuario();
-        UsuarioSenhaRequestDTO dto = mock(UsuarioSenhaRequestDTO.class);
-
-        when(dto.novaSenha()).thenReturn("novaSenha123");
+        UsuarioSenhaRequestDTO dto = new UsuarioSenhaRequestDTO(
+                "123456", "novaSenha123"
+        );
 
         when(usuarioRepository.findByIdUsuarioAndDeletedFalse(1L))
                 .thenReturn(Optional.of(usuario));
@@ -190,6 +193,78 @@ class UsuarioServiceTest {
         usuarioService.atualizarSenhaPorId(1L, dto);
 
         assertEquals("novaSenha123", usuario.getSenha());
+        assertEquals("Marcos", usuario.getNome());
+        assertEquals("marcos@email.com", usuario.getEmail());
+        assertEquals(TipoUsuario.OPERADOR, usuario.getTipoUsuario());
+        assertFalse(usuario.isDeleted());
+    }
+
+    @Test
+    void deveRecuperarSenhaPorEmailSemExigirSenhaAtual() {
+        Usuario usuario = criarUsuario();
+        UsuarioRecuperacaoSenhaRequestDTO dto =
+                new UsuarioRecuperacaoSenhaRequestDTO("novaSenha123");
+
+        when(usuarioRepository.findByEmailAndDeletedFalse("marcos@email.com"))
+                .thenReturn(Optional.of(usuario));
+
+        usuarioService.atualizarSenhaPorEmail("marcos@email.com", dto);
+
+        assertEquals("novaSenha123", usuario.getSenha());
+        assertEquals("Marcos", usuario.getNome());
+        assertEquals("marcos@email.com", usuario.getEmail());
+        assertEquals(TipoUsuario.OPERADOR, usuario.getTipoUsuario());
+        assertFalse(usuario.isDeleted());
+    }
+
+    @Test
+    void naoDeveConsultarRepositorioParaNovaSenhaInvalida() {
+        for (String senha : new String[]{null, "", "   ", "1234567"}) {
+            UsuarioRecuperacaoSenhaRequestDTO recoveryRequest =
+                    new UsuarioRecuperacaoSenhaRequestDTO(senha);
+            UsuarioSenhaRequestDTO idRequest =
+                    new UsuarioSenhaRequestDTO("senhaAtual", senha);
+
+            assertThrows(BadRequestException.class,
+                    () -> usuarioService.atualizarSenhaPorEmail(
+                            "marcos@email.com", recoveryRequest));
+            assertThrows(BadRequestException.class,
+                    () -> usuarioService.atualizarSenhaPorId(1L, idRequest));
+        }
+
+        assertThrows(BadRequestException.class,
+                () -> usuarioService.atualizarSenhaPorEmail("marcos@email.com", null));
+        assertThrows(BadRequestException.class,
+                () -> usuarioService.atualizarSenhaPorId(1L, null));
+
+        verifyNoInteractions(usuarioRepository);
+    }
+
+    @Test
+    void naoDeveAtualizarSenhaQuandoSenhaAtualNaoConfere() {
+        Usuario usuario = criarUsuario();
+        UsuarioSenhaRequestDTO dto = new UsuarioSenhaRequestDTO(
+                "senhaErrada", "novaSenha123"
+        );
+        when(usuarioRepository.findByIdUsuarioAndDeletedFalse(1L))
+                .thenReturn(Optional.of(usuario));
+
+        assertThrows(BadRequestException.class,
+                () -> usuarioService.atualizarSenhaPorId(1L, dto));
+
+        assertEquals("123456", usuario.getSenha());
+    }
+
+    @Test
+    void deveRetornarNaoEncontradoNaRecuperacaoPorEmail() {
+        when(usuarioRepository.findByEmailAndDeletedFalse("inexistente@email.com"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class,
+                () -> usuarioService.atualizarSenhaPorEmail(
+                        "inexistente@email.com",
+                        new UsuarioRecuperacaoSenhaRequestDTO("novaSenha123")
+                ));
     }
 
     @Test
