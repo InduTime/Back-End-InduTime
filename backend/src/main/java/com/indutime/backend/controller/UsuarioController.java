@@ -1,6 +1,7 @@
 package com.indutime.backend.controller;
 
 import com.indutime.backend.database.model.TipoUsuario;
+import com.indutime.backend.dto.UsuarioLoginRequestDTO;
 import com.indutime.backend.dto.UsuarioRequestDTO;
 import com.indutime.backend.dto.UsuarioRecuperacaoSenhaRequestDTO;
 import com.indutime.backend.dto.UsuarioResponseDTO;
@@ -35,6 +36,12 @@ public class UsuarioController {
     @ResponseStatus(HttpStatus.CREATED)
     public UsuarioResponseDTO cadastrar(@Valid @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
         return usuarioService.cadastrar(usuarioRequestDTO);
+    }
+
+    @PostMapping("/login")
+    public UsuarioResponseDTO login(
+            @Valid @RequestBody UsuarioLoginRequestDTO usuarioLoginRequestDTO) {
+        return usuarioService.login(usuarioLoginRequestDTO);
     }
 
     @GetMapping

@@ -45,6 +45,96 @@ class UsuarioControllerIntegrationTest {
     }
 
     @Test
+    void deveAutenticarUsuarioEDeclararSomenteDadosPublicos() throws Exception {
+        Usuario salvo = salvarUsuario();
+
+        mockMvc.perform(post("/usuarios/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "  maria@email.com  ",
+                                  "senha": "SenhaAtual123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idUsuario").value(salvo.getIdUsuario()))
+                .andExpect(jsonPath("$.nome").value("Maria"))
+                .andExpect(jsonPath("$.email").value("maria@email.com"))
+                .andExpect(jsonPath("$.tipoUsuario").value("OPERADOR"))
+                .andExpect(jsonPath("$.senha").doesNotExist())
+                .andDo(result -> assertThat(result.getResponse().getContentAsString())
+                        .doesNotContain("SenhaAtual123"));
+    }
+
+    @Test
+    void emailInexistenteSenhaIncorretaECaixaDiferenteRetornamMesmo401() throws Exception {
+        salvarUsuario();
+
+        String senhaIncorreta = mockMvc.perform(post("/usuarios/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"maria@email.com\",\"senha\":\"errada\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("E-mail ou senha incorretos"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andReturn().getResponse().getContentAsString();
+
+        String emailInexistente = mockMvc.perform(post("/usuarios/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"inexistente@email.com\",\"senha\":\"errada\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("E-mail ou senha incorretos"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andReturn().getResponse().getContentAsString();
+
+        String caixaDiferente = mockMvc.perform(post("/usuarios/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"MARIA@email.com\",\"senha\":\"SenhaAtual123\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("E-mail ou senha incorretos"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(emailInexistente).isEqualTo(senhaIncorreta);
+        assertThat(caixaDiferente).isEqualTo(senhaIncorreta);
+    }
+
+    @Test
+    void usuarioDesativadoRetornaMesmo401DeCredenciaisInvalidas() throws Exception {
+        Usuario usuario = salvarUsuario();
+        usuario.setDeleted(true);
+        usuarioRepository.save(usuario);
+
+        mockMvc.perform(post("/usuarios/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"maria@email.com\",\"senha\":\"SenhaAtual123\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("E-mail ou senha incorretos"))
+                .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    void camposNulosVaziosOuInvalidosRetornam400() throws Exception {
+        String[] payloads = {
+                "{}",
+                "{\"email\":null,\"senha\":\"SenhaAtual123\"}",
+                "{\"email\":\"\",\"senha\":\"SenhaAtual123\"}",
+                "{\"email\":\"invalido\",\"senha\":\"SenhaAtual123\"}",
+                "{\"email\":\"maria@email.com\",\"senha\":null}",
+                "{\"email\":\"maria@email.com\",\"senha\":\"\"}",
+                "{\"email\":\"maria@email.com\",\"senha\":\"   \"}"
+        };
+
+        for (String payload : payloads) {
+            mockMvc.perform(post("/usuarios/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(payload))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.status").value(400));
+        }
+    }
+
+    @Test
     void deveRecuperarSenhaPorEmailSemExigirSenhaAtualEManterOsDemaisDados() throws Exception {
         Usuario salvo = salvarUsuario();
 
